@@ -1,0 +1,281 @@
+library(boot)
+set.seed(123)
+
+x <- read.csv(file = "eos_bs.csv", header = TRUE)
+
+fc <- function(x, indices) {
+  return( mean( x[indices] ) )
+}
+
+
+# I gave up on trying to use a for loop, hence:
+x_1 <- na.omit(x$x_1)
+bs_1 <- boot(x_1, fc, R=1000, stype = "i")
+boot.ci(bs_1)
+count_1 <- length(which(bs_1$t > 299))
+
+x_2 <- na.omit(x$x_2)
+bs_2 <- boot(x_2, fc, R=1000, stype = "i")
+boot.ci(bs_2)
+count_2 <- length(which(bs_2$t > 299))
+
+x_3 <- na.omit(x$x_3)
+bs_3 <- boot(x_3, fc, R=1000, stype = "i")
+boot.ci(bs_3)
+count_3 <- length(which(bs_3$t > 299))
+
+x_4 <- na.omit(x$x_4)
+bs_4 <- boot(x_4, fc, R=1000, stype = "i")
+boot.ci(bs_4)
+count_4 <- length(which(bs_4$t > 299))
+
+x_5 <- na.omit(x$x_5)
+bs_5 <- boot(x_5, fc, R=1000, stype = "i")
+boot.ci(bs_5)
+count_5 <- length(which(bs_5$t > 299))
+
+x_6 <- na.omit(x$x_6)
+bs_6 <- boot(x_6, fc, R=1000, stype = "i")
+boot.ci(bs_6)
+count_6 <- length(which(bs_6$t > 299))
+
+x_7 <- na.omit(x$x_7)
+bs_7 <- boot(x_7, fc, R=1000, stype = "i")
+boot.ci(bs_7)
+count_7 <- length(which(bs_7$t > 299))
+
+x_8 <- na.omit(x$x_8)
+bs_8 <- boot(x_8, fc, R=1000, stype = "i")
+boot.ci(bs_8)
+count_8 <- length(which(bs_8$t > 299))
+
+x_9 <- na.omit(x$x_9)
+bs_9 <- boot(x_9, fc, R=1000, stype = "i")
+boot.ci(bs_9)
+count_9 <- length(which(bs_9$t > 299))
+
+x_10 <- na.omit(x$x_10)
+bs_10 <- boot(x_10, fc, R=1000, stype = "i")
+boot.ci(bs_10)
+count_10 <- length(which(bs_10$t > 299))
+
+x_11 <- na.omit(x$x_11)
+bs_11 <- boot(x_11, fc, R=1000, stype = "i")
+boot.ci(bs_11)
+count_11 <- length(which(bs_11$t > 299))
+
+x_12 <- na.omit(x$x_12)
+bs_12 <- boot(x_12, fc, R=1000, stype = "i")
+boot.ci(bs_12)
+count_12 <- length(which(bs_12$t > 299))
+
+x_13 <- na.omit(x$x_13)
+bs_13 <- boot(x_13, fc, R=1000, stype = "i")
+boot.ci(bs_13)
+count_13 <- length(which(bs_13$t > 299))
+
+x_14 <- na.omit(x$x_14)
+bs_14 <- boot(x_14, fc, R=1000, stype = "i")
+boot.ci(bs_14)
+count_14 <- length(which(bs_14$t > 299))
+
+x_15 <- na.omit(x$x_15)
+bs_15 <- boot(x_15, fc, R=1000, stype = "i")
+boot.ci(bs_15)
+count_15 <- length(which(bs_15$t > 299))
+
+x_16 <- na.omit(x$x_16)
+bs_16 <- boot(x_16, fc, R=1000, stype = "i")
+boot.ci(bs_16)
+count_16 <- length(which(bs_16$t > 299))
+
+x_17 <- na.omit(x$x_17)
+bs_17 <- boot(x_17, fc, R=1000, stype = "i")
+boot.ci(bs_17)
+count_17 <- length(which(bs_17$t > 299))
+
+x_18 <- na.omit(x$x_18)
+bs_18 <- boot(x_18, fc, R=1000, stype = "i")
+boot.ci(bs_18)
+count_18 <- length(which(bs_18$t > 299))
+
+x_19 <- na.omit(x$x_19)
+bs_19 <- boot(x_19, fc, R=1000, stype = "i")
+boot.ci(bs_19)
+count_19 <- length(which(bs_19$t > 299))
+
+x_20 <- na.omit(x$x_20)
+bs_20 <- boot(x_20, fc, R=1000, stype = "i")
+boot.ci(bs_20)
+count_20 <- length(which(bs_20$t > 299))
+
+x_21 <- na.omit(x$x_21)
+bs_21 <- boot(x_21, fc, R=1000, stype = "i")
+boot.ci(bs_21)
+count_21 <- length(which(bs_21$t > 299))
+
+x_22 <- na.omit(x$x_22)
+bs_22 <- boot(x_22, fc, R=1000, stype = "i")
+boot.ci(bs_22)
+count_22 <- length(which(bs_22$t > 299))
+
+x_23 <- na.omit(x$x_23)
+bs_23 <- boot(x_23, fc, R=1000, stype = "i")
+boot.ci(bs_23)
+count_23 <- length(which(bs_23$t > 299))
+
+x_24 <- na.omit(x$x_24)
+bs_24 <- boot(x_24, fc, R=1000, stype = "i")
+boot.ci(bs_24)
+count_24 <- length(which(bs_24$t > 299))
+
+x_25 <- na.omit(x$x_25)
+bs_25 <- boot(x_25, fc, R=1000, stype = "i")
+boot.ci(bs_25)
+count_25 <- length(which(bs_25$t > 299))
+
+x_26 <- na.omit(x$x_26)
+bs_26 <- boot(x_26, fc, R=1000, stype = "i")
+boot.ci(bs_26)
+count_26 <- length(which(bs_26$t > 299))
+
+x_27 <- na.omit(x$x_27)
+bs_27 <- boot(x_27, fc, R=1000, stype = "i")
+boot.ci(bs_27)
+count_27 <- length(which(bs_27$t > 299))
+
+x_28 <- na.omit(x$x_28)
+bs_28 <- boot(x_28, fc, R=1000, stype = "i")
+boot.ci(bs_28)
+count_28 <- length(which(bs_28$t > 299))
+
+x_29 <- na.omit(x$x_29)
+bs_29 <- boot(x_29, fc, R=1000, stype = "i")
+boot.ci(bs_29)
+count_29 <- length(which(bs_29$t > 299))
+
+x_30 <- na.omit(x$x_30)
+bs_30 <- boot(x_30, fc, R=1000, stype = "i")
+boot.ci(bs_30)
+count_30 <- length(which(bs_30$t > 299))
+print(count_30)
+
+x_31 <- na.omit(x$x_31)
+bs_31 <- boot(x_31, fc, R=1000, stype = "i")
+boot.ci(bs_31)
+count_31 <- length(which(bs_31$t > 299))
+
+x_32 <- na.omit(x$x_32)
+bs_32 <- boot(x_32, fc, R=1000, stype = "i")
+boot.ci(bs_32)
+count_32 <- length(which(bs_32$t > 299))
+
+x_33 <- na.omit(x$x_33)
+bs_33 <- boot(x_33, fc, R=1000, stype = "i")
+boot.ci(bs_33)
+count_33 <- length(which(bs_33$t > 299))
+
+x_34 <- na.omit(x$x_34)
+bs_34 <- boot(x_34, fc, R=1000, stype = "i")
+boot.ci(bs_34)
+count_34 <- length(which(bs_34$t > 299))
+
+x_35 <- na.omit(x$x_35)
+bs_35 <- boot(x_35, fc, R=1000, stype = "i")
+boot.ci(bs_35)
+count_35 <- length(which(bs_35$t > 299))
+
+x_36 <- na.omit(x$x_36)
+bs_36 <- boot(x_36, fc, R=1000, stype = "i")
+boot.ci(bs_36)
+count_36 <- length(which(bs_36$t > 299))
+
+x_37 <- na.omit(x$x_37)
+bs_37 <- boot(x_37, fc, R=1000, stype = "i")
+boot.ci(bs_37)
+count_37 <- length(which(bs_37$t > 299))
+
+x_38 <- na.omit(x$x_38)
+bs_38 <- boot(x_38, fc, R=1000, stype = "i")
+boot.ci(bs_38)
+count_38 <- length(which(bs_38$t > 299))
+
+x_39 <- na.omit(x$x_39)
+bs_39 <- boot(x_39, fc, R=1000, stype = "i")
+boot.ci(bs_39)
+count_39 <- length(which(bs_39$t > 299))
+
+x_40 <- na.omit(x$x_40)
+bs_40 <- boot(x_40, fc, R=1000, stype = "i")
+boot.ci(bs_40)
+count_40 <- length(which(bs_40$t > 299))
+
+x_41 <- na.omit(x$x_41)
+bs_41 <- boot(x_41, fc, R=1000, stype = "i")
+boot.ci(bs_41)
+count_41 <- length(which(bs_41$t > 299))
+
+x_42 <- na.omit(x$x_42)
+bs_42 <- boot(x_42, fc, R=1000, stype = "i")
+boot.ci(bs_42)
+count_42 <- length(which(bs_42$t > 299))
+
+x_43 <- na.omit(x$x_43)
+bs_43 <- boot(x_43, fc, R=1000, stype = "i")
+boot.ci(bs_43)
+count_43 <- length(which(bs_43$t > 299))
+
+x_44 <- na.omit(x$x_44)
+bs_44 <- boot(x_44, fc, R=1000, stype = "i")
+boot.ci(bs_44)
+count_44 <- length(which(bs_44$t > 299))
+
+x_45 <- na.omit(x$x_45)
+bs_45 <- boot(x_45, fc, R=1000, stype = "i")
+boot.ci(bs_45)
+count_45 <- length(which(bs_45$t > 299))
+
+x_46 <- na.omit(x$x_46)
+bs_46 <- boot(x_46, fc, R=1000, stype = "i")
+boot.ci(bs_46)
+count_46 <- length(which(bs_46$t > 299))
+
+x_47 <- na.omit(x$x_47)
+bs_47 <- boot(x_47, fc, R=1000, stype = "i")
+boot.ci(bs_47)
+count_47 <- length(which(bs_47$t > 299))
+
+x_48 <- na.omit(x$x_48)
+bs_48 <- boot(x_48, fc, R=1000, stype = "i")
+boot.ci(bs_48)
+count_48 <- length(which(bs_48$t > 299))
+
+x_49 <- na.omit(x$x_49)
+bs_49 <- boot(x_49, fc, R=1000, stype = "i")
+boot.ci(bs_49)
+count_49 <- length(which(bs_49$t > 299))
+
+x_50 <- na.omit(x$x_50)
+bs_50 <- boot(x_50, fc, R=1000, stype = "i")
+boot.ci(bs_50)
+count_50 <- length(which(bs_50$t > 299))
+
+x_51 <- na.omit(x$x_51)
+bs_51 <- boot(x_51, fc, R=1000, stype = "i")
+boot.ci(bs_51)
+count_51 <- length(which(bs_51$t > 299))
+
+x_52 <- na.omit(x$x_52)
+bs_52 <- boot(x_52, fc, R=1000, stype = "i")
+boot.ci(bs_52)
+count_52 <- length(which(bs_52$t > 299))
+
+x_53 <- na.omit(x$x_53)
+bs_53 <- boot(x_53, fc, R=1000, stype = "i")
+boot.ci(bs_53)
+count_53 <- length(which(bs_53$t > 299))
+
+x_54 <- na.omit(x$x_54)
+bs_54 <- boot(x_54, fc, R=1000, stype = "i")
+boot.ci(bs_54)
+count_54 <- length(which(bs_54$t > 299))
