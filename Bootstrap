@@ -6,7 +6,6 @@ boot.mean <- function(x,i){
   boot.mean<-mean(x[i])
 }
 
-#Get data
 x <- read.csv(file = "eos_bs.csv", header = TRUE)
 
 i<-nrow(x) 
@@ -26,6 +25,13 @@ nucala_cutoff <- as.data.frame(t(temp_nu))
 dupilumab_cutoff <- as.data.frame(t(temp_du))
 average <- as.data.frame(t(sapply(x, mean, na.rm = T))) 
 
-CDF <- merge(average, nucala_cutoff, dupilumab_cutoff)
+CDF <- merge(average, nucala_cutoff, dupilumab_cutoff, mergeby = x)
 
-nuc <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
+nuc_drm <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
+dup_drm <- drm(formula = CDF$average ~ CDF$dupilumab_cutoff)
+
+plot_nuc <- plotdrm(nuc_drm)
+plot_drm <- plotdrm(dup_drm)
+
+summary(nuc_drm)
+summary(dup_drm)
