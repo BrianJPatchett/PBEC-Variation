@@ -25,7 +25,7 @@ nucala_cutoff <- as.data.frame(t(temp_nu))
 dupilumab_cutoff <- as.data.frame(t(temp_du))
 average <- as.data.frame(t(sapply(x, mean, na.rm = T))) 
 
-CDF <- merge(average, nucala_cutoff, dupilumab_cutoff, mergeby = x)
+CDF <- cbind(average, nucala_cutoff, dupilumab_cutoff)
 
 nuc_drm <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
 dup_drm <- drm(formula = CDF$average ~ CDF$dupilumab_cutoff)
