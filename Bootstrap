@@ -1,20 +1,31 @@
+library(drc)
 library(boot)
+
 set.seed(123)
-
-x <- read.csv(file = "eos_bs.csv", header = TRUE)
-
-i<-nrow(x) #count number of rows for resampling 
-
 boot.mean <- function(x,i){
   boot.mean<-mean(x[i])
 }
 
-apply(x,2,function(y){ 
-  b_low<-boot(y,boot.mean,R=1001); 
-  c(length(which(b_low$t > 149)))
-})
+#Get data
+x <- read.csv(file = "eos_bs.csv", header = TRUE)
 
-apply(x,2,function(y){ 
-  b_high<-boot(y,boot.mean,R=1001); 
-  c(length(which(b_high$t > 299)))
-})
+i<-nrow(x) 
+boot_rep <- 1001
+
+temp_du <- as.data.frame(apply(x,2,function(y){ 
+  b<-boot(y,boot.mean,R=boot_rep); 
+  c(length(which(b$t > 149)) / boot_rep)
+}))
+
+temp_nu <- as.data.frame(apply(x,2,function(y){ 
+  b<-boot(y,boot.mean,R=boot_rep); 
+  c(length(which(b$t > 299)) / boot_rep)
+}))
+
+nucala_cutoff <- as.data.frame(t(temp_nu))
+dupilumab_cutoff <- as.data.frame(t(temp_du))
+average <- as.data.frame(t(sapply(x, mean, na.rm = T))) 
+
+CDF <- merge(average, nucala_cutoff, dupilumab_cutoff)
+
+nuc <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
