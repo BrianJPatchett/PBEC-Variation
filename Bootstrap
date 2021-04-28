@@ -1,37 +1,48 @@
 library(drc)
 library(boot)
 
-set.seed(123)
+# set seed for reproducibility
+set.seed(123) 
+
+#Get data
+x <- read.csv(file = "eos_bs.csv", header = TRUE)
+
+# Create function that bootstraps and returns the mean of the bootstrap
 boot.mean <- function(x,i){
   boot.mean<-mean(x[i])
 }
 
-x <- read.csv(file = "eos_bs.csv", header = TRUE)
-
+# bootstrap over i rows
 i<-nrow(x) 
-boot_rep <- 1001
 
-temp_du <- as.data.frame(apply(x,2,function(y){ 
+# number of bootstraps
+boot_rep <- 1001 
+
+#Bootstrap for 150 cells/ul cutoff
+temp_du <- apply(x,2,function(y){ 
   b<-boot(y,boot.mean,R=boot_rep); 
   c(length(which(b$t > 149)) / boot_rep)
-}))
+})
 
-temp_nu <- as.data.frame(apply(x,2,function(y){ 
+#Bootstrap for 300 cells/ul cutoff
+temp_nu <- apply(x,2,function(y){ 
   b<-boot(y,boot.mean,R=boot_rep); 
   c(length(which(b$t > 299)) / boot_rep)
-}))
+})
 
-nucala_cutoff <- as.data.frame(t(temp_nu))
-dupilumab_cutoff <- as.data.frame(t(temp_du))
-average <- as.data.frame(t(sapply(x, mean, na.rm = T))) 
+#Bootstrap for 400 cells/ul cutoff
+temp_be <- apply(x,2,function(y){ 
+  b<-boot(y,boot.mean,R=boot_rep); 
+  c(length(which(b$t > 399)) / boot_rep)
+})
 
-CDF <- cbind(average, nucala_cutoff, dupilumab_cutoff)
+# Convert to data frames 
+nucala_cutoff <- as.data.frame(temp_nu)
+dupilumab_cutoff <- as.data.frame(temp_du)
+average <- as.data.frame(sapply(x, mean, na.rm = T)) 
 
-nuc_drm <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
-dup_drm <- drm(formula = CDF$average ~ CDF$dupilumab_cutoff)
+# Merge and clean up names
+CDF <- cbind(average, nucala_cutoff, dupilumab_cutoff) 
+colnames(CDF)<- c("average","nucala_cutoff","dupilumab_cutoff")
 
-plot_nuc <- plotdrm(nuc_drm)
-plot_drm <- plotdrm(dup_drm)
-
-summary(nuc_drm)
-summary(dup_drm)
+nuc <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
