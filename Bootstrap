@@ -24,6 +24,11 @@ temp_du <- apply(x,2,function(y){
   c(length(which(b$t > 149)) / boot_rep)
 })
 
+temp_diff <- apply(x,2,function(y){ 
+  b<-boot(y,boot.mean,R=boot_rep); 
+  c(length(which(b$t < 300) - which(b$t > 149)) / boot_rep)
+})
+
 #Bootstrap for 300 cells/ul cutoff
 temp_nu <- apply(x,2,function(y){ 
   b<-boot(y,boot.mean,R=boot_rep); 
@@ -37,12 +42,24 @@ temp_be <- apply(x,2,function(y){
 })
 
 # Convert to data frames 
-nucala_cutoff <- as.data.frame(temp_nu)
-dupilumab_cutoff <- as.data.frame(temp_du)
+low_cutoff <- as.data.frame(temp_nu)
+med_cutoff <- as.data.frame(temp_du)
+high_cutoff <- as.data.frame(temp_be)
 average <- as.data.frame(sapply(x, mean, na.rm = T)) 
 
 # Merge and clean up names
 CDF <- cbind(average, nucala_cutoff, dupilumab_cutoff) 
-colnames(CDF)<- c("average","nucala_cutoff","dupilumab_cutoff")
+colnames(CDF)<- c("average","low_cutoff","med_cutoff", "high_cutoff")
 
-nuc <- drm(formula = CDF$average ~ CDF$nucala_cutoff)
+# Fit 3 component log-logistic function
+low_drm <- drm(formula = CDF$average ~ CDF$nucala_cutoff, fct = LL.3u())
+low_model <- modelfit(low_drm)
+low_summary <- summary(low_drm)
+
+med_drm <- drm(formula = CDF$average ~ CDF$low_cutoff, fct = LL.3u())
+med_model <- modelfit(med_drm)
+med_summary <- summary(med_drm)
+
+high_drm <- drm(formula = CDF$average ~ CDF$high_cutoff, fct = LL.3u())
+high_model <- modelfit(high_drm)
+high_summary <- summary(high_drm)
