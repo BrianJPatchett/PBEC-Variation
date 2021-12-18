@@ -1,0 +1,22 @@
+library(lme4)
+set.seed(1234)
+database <- read.csv(file = "eosmixedcommas.csv", header = TRUE)
+mod1_inst <- lmer(EOS ~ INST + (1 | PID), data = database)
+mod2_inst <- lmer(EOS ~ (1|PID), data = database)
+anova(mod1_inst, mod2_inst)
+
+bmivars <- c("EOS", "BMI", "PID")
+bmidata <- database[bmivars]
+
+test <- na.omit(bmidata)
+mod1_BMI <- lmer(EOS ~ BMI + (1 | PID), data = test)
+mod2_BMI <- lmer(EOS ~ (1 | PID), data = test)
+anova(mod1_BMI, mod2_BMI)
+
+agevars <- c("EOS", "AGE", "PID")
+agedata <- database[agevars]
+agedata <- na.omit(agedata)
+
+mod1_age <- lmer(EOS ~ AGE + (1|PID), data = agedata)
+mod2_age <- lmer(EOS ~ (1|PID), data = agedata)
+anova(mod1_age, mod2_age)
