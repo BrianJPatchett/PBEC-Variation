@@ -1,0 +1,29 @@
+library(ggplot2)
+library(tibble)
+
+tabletext <- cbind(c("Study", "Corren et al 2021", "Patchett et al 2022", "Spector and Tan 2012", 
+                     "Acland and Gould 1956", "Mann and Lehmann 1952", "Mathur et al 2016", 
+                     "Rossem et al 2021", "Winkel et al 1981", "Li et al 2021", NA, "Summary"),
+                   c("Sample Size", "478", "111", "12", "20", "11", "82", "50", "21", "241", NA, NA),
+                   c("CV", "0.473", "0.4626", "1.124", "0.272", "1.02", "0.397", "0.28", "0.272", "0.1936", NA, "0.396"))
+
+# Might add sample size and CV to next iteration of graph so I'm leaving them in for now.
+base_data <- tibble(mean  = c(0.396, 0.473, 0.4626, 1.124, 0.272, 1.02, 0.397, 0.28, 0.272, 0.1936),
+                     lower = c(0.379, 0.502, 0.523, 1.628, 0.361, 1.504, 0.457, 0.3346, 0.3584, 0.210),
+                     upper = c(0.413, 0.4431, 0.4021, 0.619, 0.182, 0.535, 0.336, 0.2254, 0.185, 0.176),
+                     study = c("Summary", "Corren et al 2021", "Patchett et al 2022", "Spector and Tan 2012",
+                               "Acland and Gould 1956", "Mann and Lehmann 1952", "Mathur et al 2016", 
+                               "Rossem et al 2021", "Winkel et al 1981", "Li et al 2021"),
+                    index = 1:10,
+                    n = c("1026", "478", "111", "12", "20", "11", "82", "50", "21", "241"),
+                    CV = c("0.396", "0.473", "0.4626", "1.124", "0.272", "1.02", "0.397", "0.28", "0.272", "0.1936"))
+
+
+ggplot(data=base_data, aes(y=index, x=mean, xmin=lower, xmax=upper)) +
+  geom_point() + 
+  geom_linerange() +
+  scale_y_continuous(name = "", breaks=1:nrow(base_data), labels=base_data$study) +
+  labs(title='Coefficient of Variation by Study', x='Coefficient of Variation', y = 'Study') +
+  geom_vline(xintercept=0.396, color='black', linetype='dashed', alpha=.5) +
+  theme_classic()
+  
