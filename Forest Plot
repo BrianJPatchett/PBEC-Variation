@@ -1,29 +1,28 @@
 library(ggplot2)
 library(tibble)
 
-tabletext <- cbind(c("Study", "Corren et al 2021", "Patchett et al 2022", "Spector and Tan 2012", 
-                     "Acland and Gould 1956", "Mann and Lehmann 1952", "Mathur et al 2016", 
-                     "Rossem et al 2021", "Winkel et al 1981", "Li et al 2021", NA, "Summary"),
-                   c("Sample Size", "478", "111", "12", "20", "11", "82", "50", "21", "241", NA, NA),
-                   c("CV", "0.473", "0.4626", "1.124", "0.272", "1.02", "0.397", "0.28", "0.272", "0.1936", NA, "0.396"))
-
-# Might add sample size and CV to next iteration of graph so I'm leaving them in for now.
 base_data <- tibble(mean  = c(0.396, 0.473, 0.4626, 1.124, 0.272, 1.02, 0.397, 0.28, 0.272, 0.1936),
-                     lower = c(0.379, 0.502, 0.523, 1.628, 0.361, 1.504, 0.457, 0.3346, 0.3584, 0.210),
-                     upper = c(0.413, 0.4431, 0.4021, 0.619, 0.182, 0.535, 0.336, 0.2254, 0.185, 0.176),
-                     study = c("Summary", "Corren et al 2021", "Patchett et al 2022", "Spector and Tan 2012",
-                               "Acland and Gould 1956", "Mann and Lehmann 1952", "Mathur et al 2016", 
-                               "Rossem et al 2021", "Winkel et al 1981", "Li et al 2021"),
-                    index = 1:10,
+                    lower = c(0.379, 0.502, 0.523, 1.628, 0.361, 1.504, 0.457, 0.3346, 0.3584, 0.210),
+                    upper = c(0.413, 0.4431, 0.4021, 0.619, 0.182, 0.535, 0.336, 0.2254, 0.185, 0.176),
+                    study = c("Summary", "Corren et al 2021", "Our study", "Spector and Tan 2012",
+                              "Acland and Gould 1956", "Mann and Lehmann 1952", "Mathur et al 2016", 
+                              "Rossem et al 2021", "Winkel et al 1981", "Li et al 2021"),
                     n = c("1026", "478", "111", "12", "20", "11", "82", "50", "21", "241"),
-                    CV = c("0.396", "0.473", "0.4626", "1.124", "0.272", "1.02", "0.397", "0.28", "0.272", "0.1936"))
+                    CV = c("0.396 (0.379-0.413)", "0.473(0.379-0.413)", "0.4626 (0.379-0.413)", 
+                           "1.124 (0.379-0.413)", "0.272 (0.379-0.413)", "1.02 (0.379-0.413)", 
+                           "0.397 (0.379-0.413)", "0.28 (0.379-0.413)", "0.272 (0.379-0.413)", 
+                           "0.1936(0.379-0.413) "))
 
 
-ggplot(data=base_data, aes(y=index, x=mean, xmin=lower, xmax=upper)) +
-  geom_point() + 
-  geom_linerange() +
-  scale_y_continuous(name = "", breaks=1:nrow(base_data), labels=base_data$study) +
-  labs(title='Coefficient of Variation by Study', x='Coefficient of Variation', y = 'Study') +
-  geom_vline(xintercept=0.396, color='black', linetype='dashed', alpha=.5) +
-  theme_classic()
-  
+p <- ggplot(base_data, aes(x=mean, y=as.factor(study), xmin=lower, xmax=upper))+
+  geom_pointrange(shape=22, fill="black") +
+  xlab("Coefficient of Variation with 95% Confidence Interval")+ylab("Study") +
+  theme_bw() +
+  #scale_y_discrete(limits = rev(labels))+
+  scale_x_log10(limits = c(0.1, 15), 
+                breaks = c(0.1, 0.5, 1, 25),
+                labels=c("0.25", "0.5", "1", ""), 
+                expand = c(0,0)
+  )+
+  geom_text(aes(x=6, label=paste("  ",  n,"  ",CV, sep='   ')))
+
