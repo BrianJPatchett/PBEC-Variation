@@ -4,15 +4,19 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(psych)
   library(nlme)
-  library(lme4)})
+  library(plyr)
+  library(SciViews)
+  library(clipr)
+  library(entropy)})
+})
   
 ##DATA AVAILABLE UPON REQUEST###
 data <- read.csv("eosmixeddatabase.csv", header = TRUE) 
 
 ### Pre processing ###
-data$IGE <- log(data$IGE)
+data$IGE <- ln(data$IGE)  # natural log because the use of 'exp' later
 data$IGE_c <-  data$IGE - mean(data$IGE, na.rm=TRUE)  
-data$EOS <- log(data$EOS + 1)
+data$EOS <- ln(data$EOS + 1)
 
 ### Model with homogenous IIV ###
 model.B1 <- lme(fixed = EOS ~ 1 + IGE,
@@ -32,13 +36,12 @@ model.B3 <- lme(fixed = EOS ~ 1 + IGE,
 anova(model.B1,model.B3)
 
 
-###GETTING VARIANCE AND PLOTTING DATA###
+### GETTING VARIANCE AND PLOTTING DATA ###
 IgE_c <- seq(-2.0, 7.5, .1)  # approximate range
 varpred <- summary(model.B3)$sigma^2 * exp(coef(2*model.B3$modelStruct$varStruct, uncons = FALSE)*IgE_c)
 plotvars <- as.data.frame(cbind(IgE_c, varpred))
 plotvars$IGE <- plotvars$IgE_c + mean(data$IGE, na.rm=TRUE)
 names(plotvars) <- c("IgE", "varpred")
-
 
 ggplot(data = plotvars, aes(x=exp(IgE), y = exp(varpred)), legend = FALSE) +
    geom_point() +
@@ -46,3 +49,45 @@ ggplot(data = plotvars, aes(x=exp(IgE), y = exp(varpred)), legend = FALSE) +
    xlab("Serum IgE") +
    ylab("Predicted IIV in Repeat Eos Count")
 
+
+data <- data[data$FIVE != 0, ] # 'FIVE' is a binary metric that is 1 if the patient has at least 5 PBECs.
+istats_univariate <- ddply(data, "PID", summarize,
+                           mean_EOS=mean(EOS, na.rm = TRUE)
+ 		                       isd_EOS = sd(EOS, na.rm = TRUE)
+                           )
+data_merge <- merge(istats_univariate, data, by="PID")
+data_merge <- subset(data_merge, !duplicated(cbind(PID, isd_EOS)))
+model.01 = lme(fixed = EOS ~ 1 + SEX,
+                random = list(PID = pdSymm(form = ~1)),
+                data = data,
+                na.action = na.exclude,
+                method = 'REML')
+model.02 = lme(fixed = EOS ~ 1 + SEX,
+                random = list(PID = pdSymm(form = ~1)),
+                weights = varIdent(form = ~ 1|SEX),
+                data = data,
+                na.action = na.exclude,
+                method = 'REML')
+anova(model.01, model.02)
+data_merge$SEX <- factor(data_merge$SEX, levels=c(0,1), labels=c("Male", "Female"))
+ggplot(data = data_merge, aes(x=SEX, y=isd_EOS)) +
+   geom_violin() +
+   geom_jitter() +
+   ylab("PBEC Variability")
+model.03 = lme(fixed = EOS ~ 1 + GERD,
+                random = list(PID = pdSymm(form = ~1)),
+                data = data,
+                na.action = na.exclude,
+                method = 'REML')
+model.04 = lme(fixed = EOS ~ 1 + GERD,
+                random = list(PID = pdSymm(form = ~1)),
+                weights = varIdent(form = ~ 1|GERD),
+                data = data,
+                na.action = na.exclude,
+                method = 'REML')
+anova(model.03, model.04)
+data_merge$GERD <- factor(data_merge$GERD, levels=c(0,1), labels=c("No GERD", "GERD"))
+ggplot(data = data_merge, aes(x=GERD, y=isd_EOS)) +
+   geom_violin() +
+   geom_jitter() +
+   ylab("PBEC Variability")
