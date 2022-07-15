@@ -6,7 +6,6 @@ suppressPackageStartupMessages({
   library(nlme)
   library(plyr)
   library(SciViews)
-  library(clipr)
   library(entropy)})
 })
   
