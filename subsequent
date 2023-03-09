@@ -1,0 +1,48 @@
+library(dplyr)
+library(tidyr)
+eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+temp_one = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
+temp_two = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
+
+for(i in 1:ncol(eos)){
+  for(j in 1:nrow(eos)){
+    if(is.na(eos[j+1, i])){
+      temp_one[j, i] <- NA
+    } else if(eos[j+1, i] >= 149){
+      temp_one[j, i] <- 1
+    } else if(eos[j+1, i] < 150) {
+      temp_one[j, i] <- 0
+    } 
+  }
+}
+
+for(i in 1:ncol(eos)){
+  for(j in 1:nrow(eos)){
+    if(is.na(eos[j+1, i])) {
+      temp_two[j, i] <- NA
+    } else {
+      temp_two[j, i] <- eos[j, i]
+    }
+  }
+}
+temp_one_df <- as.data.frame(temp_one)
+temp_two_df <- as.data.frame(temp_two)
+
+long_one <- temp_one_df %>%
+  pivot_longer(
+    cols = `V1`:`V134`,
+    names_to = "PID",
+    values_to = "Subs"
+  )
+
+long_two <- temp_two_df %>% 
+  pivot_longer(
+    cols = `V1`:`V134`, 
+    names_to = "PID",
+    values_to = "EOS"
+  )
+
+long <- cbind(long_one, long_two$EOS)
+colnames(long) <- c("PID", "Subs", "EOS")
+long <- long %>% arrange(PID)
+long <- na.omit(long)
