@@ -1,5 +1,6 @@
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 eos <- read.csv(file = "eos_bs.csv", header = TRUE)
 temp_one = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
 temp_two = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
@@ -46,3 +47,29 @@ long <- cbind(long_one, long_two$EOS)
 colnames(long) <- c("PID", "Subs", "EOS")
 long <- long %>% arrange(PID)
 long <- na.omit(long)
+
+labels <- c("0-25", "26-50", "51-75", "76-100", "101-125", 
+  "126-160", "151-175", "176-200", "201-225", "226-250", 
+  "251-275", "276-300", "301-325", "326-350", "351-375", 
+  "376-400", "401+")
+
+
+long_cat <- long %>% mutate(new_bin = cut(EOS, breaks=c(-1, 25, 50, 75, 100, 
+                                                        125, 150, 175, 200,
+                                                        225, 250, 275, 300,
+                                                        325, 350, 375, 400, Inf),
+                                          labels = labels))
+
+final_set <- long_cat %>% 
+  group_by(new_bin) %>% 
+  summarize(prob = (sum(Subs == "1") / sum(Subs == "1" | Subs == "0")))
+
+p <- ggplot(data = final_set, mapping = aes(x=new_bin, 
+                                       y=prob)) +
+  geom_point() +
+  theme_classic() +
+  ylab("Probability the next reading is High Th2") +
+  xlab("PBEC Count") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) 
+
+p
