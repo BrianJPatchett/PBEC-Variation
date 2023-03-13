@@ -1,3 +1,4 @@
+
 eos <- read.csv(file = "eos_bs.csv", header = TRUE)
 df_one <- eos%>%
   gather(PID, value, x_1:x_134)%>%
@@ -14,7 +15,7 @@ df <- eos %>%
   group_by(PID)%>%
   tally(value >= 0)
 
-first <- eos[-c(2:now(eos)), ] 
+first <- eos[-c(2:nrow(eos)), ] 
 
 long <- first %>%
   pivot_longer(
@@ -25,16 +26,13 @@ long <- first %>%
 
 long <- long %>% arrange(PID)
 
-freq_low <- cbind(df_one$z / df$n, long$eos) 
-as.numeric(freq_low)
-
+freq_low <- cbind(df_one$z / df$n, long$eos) %>% as.data.frame()
 
 labels_two <- c("0-50", "51-100", "101-150", "151-200", "201-250", 
                 "251-300", "301-350", "351-400", "401+")
 
-colnames(freq_low) <- c("Any", "EOS")
 
-long_cat <- freq_low %>% mutate(new_bin = cut(EOS, breaks=c(-1, 50, 100, 
+long_cat <- freq_low %>% mutate(new_bin = cut(V2, breaks=c(-1, 50, 100, 
                                                         150, 200,
                                                         250, 300,
                                                         350, 400, Inf),
@@ -42,7 +40,7 @@ long_cat <- freq_low %>% mutate(new_bin = cut(EOS, breaks=c(-1, 50, 100,
 
 final_set <- long_cat %>% 
   group_by(new_bin) %>% 
-  summarize(mean(Any))
+  summarize(mean(V1))
 colnames(final_set) <- c("new_bin", "Any")
 
 
