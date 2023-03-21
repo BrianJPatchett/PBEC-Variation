@@ -1,0 +1,45 @@
+eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+
+long_one <- eos %>%
+  pivot_longer(
+    cols = `x_1`:`x_134`,
+    names_to = "PID",
+    values_to = "Subs"
+  )
+
+long_two <- na.omit(long_one)
+
+final_set <- long_two %>% 
+  group_by(PID) %>% 
+  summarize(mean(Subs))
+
+data_merge <- merge(long_two, final_set, by="PID")
+colnames(data_merge) <- c("PID", "eos_test", "eos_average")
+
+data_merge$gold <- ifelse(data_merge$eos_average >= 300, "1",
+                ifelse(data_merge$eos_average < 300, "0", "NA"))
+
+data_merge$test <- ifelse(data_merge$gold == 1 & data_merge$eos_test >= 300, "1", 
+                         ifelse(data_merge$gold == 1 & data_merge$eos_test < 300, "0",
+                                ifelse(data_merge$gold == 0 & data_merge$eos_test >= 300, "0", 
+                                       ifelse(data_merge$gold == 0 & data_merge$eos_test < 300, "1", "NA"))))
+
+data_merge$test <- as.numeric(data_merge$test)
+data_merge$gold <- as.numeric(data_merge$gold)
+
+library(lme4)
+log_model2 <- glmer(test ~ gold + (1|PID), family = binomial(link = "logit")
+                    , data = data_merge)
+summary(log_model2)
+fun <- function(b, c, d) {
+  if(d==1){
+    a <- (1/(1+exp(-1*(b + c*d))))
+    return(a)
+  }
+  if(d==0) {
+    e <- 1-(1/(1+exp(-1*(b + c*d)))) 
+    return(e)
+  }
+}
+
+fun(2.8553, -1.4255, 1)
