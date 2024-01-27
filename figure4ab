@@ -1,0 +1,46 @@
+library(drc)
+library(ggplot2)
+
+## I did the calculations in excel, going to convert to R code shortly ##
+dose <- read.csv(file = "dose.csv", header = TRUE)
+
+mod1 <- drm(X.150 ~ Average, data = dose, fct = LL.2())
+mod2 <- drm(X.300 ~ Average, data = dose, fct = LL.2())
+
+ED(mod1, c(5, 95), interval = "delta")
+ED(mod2, c(5, 95), interval = "delta")
+
+low_curve <-
+  ggplot(data = dose,
+         aes(
+           x = Average,
+           y = X.150)) +
+  geom_point(shape=16) +
+  geom_smooth(method = drm, 
+              method.args = list(fct = LL.2()), 
+              se = FALSE, 
+              color = "black") +
+  geom_vline(xintercept = 150, linetype="solid", color = "red", size=1) +
+  xlab("Average Eosinophil Count") +
+  ylab("Proportion of Measurements ≥150 cells/ul") +
+  labs(tag = "4a)") +
+  scale_x_log10() +
+  theme_classic()
+
+high_curve <-
+  ggplot(data = dose,
+         aes(
+           x = Average,
+           y = X.300)) +
+  geom_point(shape=16) +
+  geom_smooth(method = drm, 
+              method.args = list(fct = LL.2()), 
+              se = FALSE, 
+              color = "black") +
+  geom_vline(xintercept = 300, linetype="solid", color = "red", size=1) +
+  xlab("Average Eosinophil Count") +
+  ylab("Proportion of Measurements ≥300 cells/ul") +
+  labs(tag = "4b)") +
+  theme_classic()
+
+grid.arrange(low_curve, high_curve, nrow = 1)
