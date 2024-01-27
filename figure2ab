@@ -1,0 +1,71 @@
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+
+eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+
+except_first <- eos[-c(1), ] 
+
+df_one <- except_first %>%
+  gather(PID, value, x_1:x_154)%>%
+  group_by(PID) %>%
+  na.omit %>% 
+  summarise(Highest_Value = max(value))
+
+### now remove all but the first eosinophil readings ###
+first <- eos[-c(2:nrow(eos)), ] 
+
+### Convert from wide to long ###
+long <- first %>%
+  pivot_longer(
+    cols = `x_1`:`x_154`,
+    names_to = "PID",
+    values_to = "eos"
+  )
+
+### merge by PID ###
+total <- merge(long, df_one,by="PID")
+
+total$low <- 0
+total$low <- ifelse(total$Highest_Value > 149, 1, total$low)
+total$high <- 0
+total$high <- ifelse(total$Highest_Value > 299, 1, total$high)
+
+labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249", 
+                "250-299", "300-349", "350-399", "400+")
+
+cat_low <- total %>% mutate(new_bin = cut(eos, breaks=c(-1, 50, 100, 
+                                                          150, 200,
+                                                          250, 300,
+                                                          350, 400, Inf),
+                                             labels = labels_two))
+
+final_set_low <- cat_low %>% 
+  group_by(new_bin) %>% 
+  summarize(mean(low))
+final_set_high <- cat_low %>% 
+  group_by(new_bin) %>% 
+  summarize(mean(high))
+
+colnames(final_set_low) <- c("new_bin", "Any_low")
+colnames(final_set_high) <- c("new_bin", "Any_high")
+
+p_one <- ggplot(data = final_set_low, mapping = aes(x=new_bin, y=Any_low)) +
+  geom_point() +
+  theme_classic() +
+  ylab("Probability that at least one subsequent reading is ≥150") +
+  xlab("Initial PBEC Count") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(tag = "2a)") +
+  scale_y_continuous(limits = c(0,1))
+
+p_two <- ggplot(data = final_set_high, mapping = aes(x=new_bin, y=Any_high)) +
+  geom_point() +
+  theme_classic() +
+  ylab("Probability that at least one subsequent reading is ≥300") +
+  xlab("Initial PBEC Count") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(tag = "2b)") +
+  scale_y_continuous(limits = c(0,1))
+
+grid.arrange(p_one, p_two, nrow = 1)
