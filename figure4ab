@@ -1,20 +1,44 @@
 library(drc)
 library(ggplot2)
+library(ggh4x)
 
-## I did the calculations in excel, going to convert to R code shortly ##
-dose <- read.csv(file = "dose.csv", header = TRUE)
+## Is this the best code? no. Does it work? yes ##
 
-mod1 <- drm(X.150 ~ Average, data = dose, fct = LL.2())
-mod2 <- drm(X.300 ~ Average, data = dose, fct = LL.2())
+long <- eos %>%
+  pivot_longer(
+    cols = `x_1`:`x_154`,
+    names_to = "PID",
+    values_to = "eos"
+  ) %>%
+  na.omit()
+
+average <- long %>%
+  group_by(PID) %>%
+  summarise(mean(eos))
+
+low <- long %>%
+  group_by(PID) %>%
+  summarize(prob = (sum(eos >= 150)) / (sum(eos >= 150 | eos < 150)))
+
+high <- long %>%
+  group_by(PID) %>%
+  summarize(prob = (sum(eos >= 300)) / (sum(eos >= 300 | eos < 300)))
+
+merge_one <- unique(left_join(average,low,by="PID"))
+merge_final <- unique(left_join(merge_one, high, by="PID"))
+colnames(merge_final) <- c("PID", "average", "low", "high")
+
+mod1 <- drm(low ~ average, data = merge_final, fct = LL.2())
+mod2 <- drm(high ~ average, data = merge_final, fct = LL.2())
 
 ED(mod1, c(5, 95), interval = "delta")
 ED(mod2, c(5, 95), interval = "delta")
 
 low_curve <-
-  ggplot(data = dose,
+  ggplot(data = merge_final,
          aes(
-           x = Average,
-           y = X.150)) +
+           x = average,
+           y = low)) +
   geom_point(shape=16) +
   geom_smooth(method = drm, 
               method.args = list(fct = LL.2()), 
@@ -24,14 +48,14 @@ low_curve <-
   xlab("Average Eosinophil Count") +
   ylab("Proportion of Measurements ≥150 cells/ul") +
   labs(tag = "4a)") +
-  scale_x_log10() +
+  scale_x_log10(minor_breaks = seq(0, 1000, by = 100), guide = "axis_minor") +
   theme_classic()
 
 high_curve <-
-  ggplot(data = dose,
+  ggplot(data = merge_final,
          aes(
-           x = Average,
-           y = X.300)) +
+           x = average,
+           y = high)) +
   geom_point(shape=16) +
   geom_smooth(method = drm, 
               method.args = list(fct = LL.2()), 
@@ -41,6 +65,7 @@ high_curve <-
   xlab("Average Eosinophil Count") +
   ylab("Proportion of Measurements ≥300 cells/ul") +
   labs(tag = "4b)") +
+  scale_x_log10(minor_breaks = seq(0, 1000, by = 100), guide = "axis_minor") +
   theme_classic()
 
 grid.arrange(low_curve, high_curve, nrow = 1)
