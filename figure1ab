@@ -1,0 +1,35 @@
+library(ggplot2)
+library(dplyr)
+library(egg)
+eos_time <- read.csv(file = "eostime.csv", header = TRUE)
+
+# two columns, one is eosinophil level the other is the time of draw 
+a <- eos_time %>%
+  arrange(Time_bin) %>%
+  mutate(Time_bin = factor(Time_bin, levels=c("6:00AM - 8:59AM", "9:00AM - 11:59AM", 
+                                      "12:00PM - 2:59PM", "3:00PM - 5:59PM"))) %>%
+  ggplot(aes(x = Time_bin, y = EOS)) +
+  geom_boxplot() +
+  stat_summary(fun=mean, geom="point", 
+               shape=20, size=3, color="red", fill="red") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  xlab("") +
+  labs(tag = "1a)") +
+  theme_minimal()
+
+# two columns, one is eosinophil level the other is the astronomical season 
+eos_season <- read.csv(file = "eos_season.csv", header = TRUE)
+
+b <- eos_season %>%
+  arrange(Season) %>%
+  mutate(Season = factor(Season, levels = c("Winter", "Spring", "Summer", "Autumn"))) %>%
+  ggplot(aes(x = Season, y = EOS)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point",
+               shape = 20, size = 3, color = "red", fill = "red") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  xlab("") +
+  labs(tag = "1b)") +
+  theme_minimal()
+
+grid.arrange(a, b, nrow = 1)
