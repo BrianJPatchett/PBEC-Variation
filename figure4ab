@@ -3,7 +3,8 @@ library(ggplot2)
 library(ggh4x)
 
 ## Is this the best code? no. Does it work? yes ##
-eos <- read.csv("file = eos_bs.csv", header = TRUE)
+# Again, same format of data as above 
+eos <- read.csv("file = eos.csv", header = TRUE)
 
 long <- eos %>%
   pivot_longer(
