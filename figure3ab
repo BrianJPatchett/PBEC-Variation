@@ -2,7 +2,9 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(egg)
-eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+
+### Same format of data as figure 2 ###
+eos <- read.csv(file = "eos.csv", header = TRUE)
 temp_one = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
 temp_two = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
 
