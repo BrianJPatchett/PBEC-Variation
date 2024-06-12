@@ -2,7 +2,10 @@ library(tidyr)
 library(ggplot2)
 library(dplyr)
 
-eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+### Data is structured where each column is a patient, and each row is their ith reading.
+# this means I need to do some data wrangling, but if you format your data the same as me you 
+# should be good to just copy-paste my code.
+eos <- read.csv(file = "eos.csv", header = TRUE)
 
 except_first <- eos[-c(1), ] 
 
