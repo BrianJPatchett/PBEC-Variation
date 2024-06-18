@@ -67,10 +67,20 @@ final_set_low <- long_cat %>%
   group_by(new_bin) %>% 
   summarize(prob = (sum(Subs == "1") / sum(Subs == "1" | Subs == "0")))
 
-plot_one <- ggplot(data = final_set_low, mapping = aes(x=new_bin, 
-                                            y=prob)) +
-  geom_point() +
-  theme_classic() +
+a <- c(rep(0, 6), rep(1, 11))
+ideal_low <- cbind(a, labels)
+colnames(ideal) <- c("Low", "new_bin")
+ideal$new_bin <- as.factor(ideal$new_bin)
+new_data <- merge(final_set_low, ideal, by = "new_bin")
+df_plt <- reshape2::melt(new_data, id.var='new_bin')
+
+plot_one <- ggplot(data = df_plt, mapping = aes(x=new_bin, y = value, color = variable, shape = variable)) +
+  geom_point(size = 2) +
+  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
+  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
+  scale_fill_manual(values = c("red", "black")) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.title=element_blank()) +
   ylab("Probability the next reading is ≥150") +
   xlab("PBEC Count") +
   scale_x_discrete(guide = guide_axis(angle = 45)) +
@@ -133,10 +143,20 @@ final_set_high <- long_cat %>%
   group_by(new_bin) %>% 
   summarize(prob = (sum(Subs == "1") / sum(Subs == "1" | Subs == "0")))
 
-plot_two <- ggplot(data = final_set_high, mapping = aes(x=new_bin, 
-                                            y=prob)) +
-  geom_point() +
-  theme_classic() +
+b <- c(rep(0, 6), rep(1, 11))
+ideal_high <- cbind(b, labels)
+colnames(ideal) <- c("High", "new_bin")
+ideal_high$new_bin <- as.factor(ideal_high$new_bin)
+new_data_high <- merge(final_set_high, ideal, by = "new_bin")
+df_plt2 <- reshape2::melt(new_data_high, id.var='new_bin')
+
+plot_two <- ggplot(data = df_plt2, mapping = aes(x=new_bin, y = value, color = variable, shape = variable)) +
+  geom_point(size = 2) +
+  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
+  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
+  scale_fill_manual(values = c("red", "black")) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.title=element_blank()) +
   ylab("Probability the next reading is ≥300") +
   xlab("PBEC Count") +
   scale_x_discrete(guide = guide_axis(angle = 45)) +
