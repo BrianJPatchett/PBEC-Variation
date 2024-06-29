@@ -1,0 +1,81 @@
+library(tidyr)
+library(dplyr)
+eos <- read.csv(file = "eos.csv", header = TRUE)
+
+### Resampling approach ###
+
+eos[is.na(eos)] <- -9999
+
+resample_and_process <- function(data) {
+  # Remove the first row and shift the remaining rows up
+  except_first <- data[-c(1), ] 
+  
+  df_one <- except_first %>%
+    gather(PID, value, x_1:x_154) %>%
+    group_by(PID) %>%
+    na.omit %>% 
+    summarise(Highest_Value = max(value))
+  
+  # Shuffle the measurements
+  shuffled <- data.frame(matrix(ncol = ncol(data), nrow = nrow(data)))
+  colnames(shuffled) <- colnames(data)
+  
+  for (i in 1:ncol(data)) {
+    shuffled[, i] <- sample(data[, i])
+  }
+  
+  # Replace placeholder with NA after shuffling
+  shuffled[shuffled == -9999] <- NA
+  
+  # Remove all but the first eosinophil readings
+  first <- shuffled[-c(2:nrow(shuffled)), ] 
+  
+  # Convert from wide to long
+  long <- first %>%
+    pivot_longer(
+      cols = `x_1`:`x_154`,
+      names_to = "PID",
+      values_to = "eos"
+    )
+  
+  # Merge by PID
+  total <- merge(long, df_one, by = "PID")
+  
+  total$low <- 0
+  total$low <- ifelse(total$Highest_Value > 149, 1, total$low)
+  total$high <- 0
+  total$high <- ifelse(total$Highest_Value > 299, 1, total$high)
+  
+  labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249", 
+                  "250-299", "300-349", "350-399", "400+")
+  
+  cat_low <- total %>%
+    mutate(new_bin = cut(eos, breaks = c(-1, 50, 100, 150, 200, 250, 300, 350, 400, Inf),
+                         labels = labels_two))
+  
+  final_set_low <- cat_low %>%
+    group_by(new_bin) %>%
+    summarize(mean_low = mean(low, na.rm = TRUE))
+  
+  final_set_high <- cat_low %>%
+    group_by(new_bin) %>%
+    summarize(mean_high = mean(high, na.rm = TRUE))
+  
+  return(list(final_set_low = final_set_low, final_set_high = final_set_high))
+}
+
+set.seed(123) # Set seed for reproducibility
+resamples <- lapply(1:1000, function(x) resample_and_process(eos))
+
+# Extract and combine results
+low_results <- do.call(rbind, lapply(resamples, function(x) x$final_set_low))
+high_results <- do.call(rbind, lapply(resamples, function(x) x$final_set_high))
+
+# Compute the average results
+average_low <- low_results %>%
+  group_by(new_bin) %>%
+  summarize(mean = mean(mean_low, na.rm = TRUE)) 
+
+average_high <- high_results %>%
+  group_by(new_bin) %>%
+  summarize(mean = mean(mean_high, na.rm = TRUE)) 
