@@ -4,7 +4,7 @@ This paper deals with variation of the peripheral blood eosinophil count. In the
 
 ## Install and load the required packages
 
-```bash
+```{r}
 p <- c("tidyverse", "egg", "ggh4x")
 
 if (!require(p)) install.packages(p)
@@ -14,13 +14,13 @@ Now that we've loaded the packages, we need to make sure our data is in the wide
 
 ## Tutorial for Probability of Threshold Stability
 Loading the data
-```python
+```{r}
 eos <- read.csv(file = "eos.csv", header = TRUE)
 
 except_first <- eos[-c(1), ] 
 ```
 Note that in gather(PID, value, x_1:x_154), you'll have to update the x_154 to be the max number of patients you have.
-```python
+```{r}
 df_one <- except_first %>%
   gather(PID, value, x_1:x_154)%>%
   group_by(PID) %>%
@@ -30,7 +30,7 @@ df_one <- except_first %>%
 first <- eos[-c(2:nrow(eos)), ] 
 ```
 Same goes here, adjust x_154 to your highest patient number.
-```python
+```{r}
 ### Convert from wide to long ###
 long <- first %>%
   pivot_longer(
@@ -43,7 +43,7 @@ long <- first %>%
 total <- merge(long, df_one,by="PID")
 ```
 Here, you'll need to adjust "149" and "299" to be the thresholds of interest for your project. Same goes for the labels_two and mutate arguments. Adjust those to reflect the intervals of interest.
-```python
+```{r}
 total$low <- 0
 total$low <- ifelse(total$Highest_Value > 149, 1, total$low)
 total$high <- 0
