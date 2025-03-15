@@ -1,4 +1,4 @@
-# Patchett et al., 2024
+# Patchett et al., 2025
 
 This paper deals with variation of the peripheral blood eosinophil count. In the paper, we develop new intra-individual metrics called the Probability of Threshold Stability (PTS) and Probability of Change Over Threshold (PCOT). These were inspired by the well-established Probability of Acute Change, which is used regularly in the psychometric literature. In case anyone is interested in replicating our findings or using PCOT or PTS in their own research, I have a brief tutorial on how we did the analysis in the paper. This is geared towards novices to make it accessible for everyone.
 
