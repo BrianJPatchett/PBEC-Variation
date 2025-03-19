@@ -4,7 +4,7 @@ library(ggplot2)
 library(egg)
 
 ### Same format of data as figure 2 ###
-eos <- read.csv(file = "eos.csv", header = TRUE)
+eos <- read.csv(file = "eos_bs.csv", header = TRUE)
 temp_one = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
 temp_two = matrix(data=NA, nrow=nrow(eos), ncol=ncol(eos))
 
@@ -34,14 +34,14 @@ temp_two_df <- as.data.frame(temp_two)
 
 long_one <- temp_one_df %>%
   pivot_longer(
-    cols = `V1`:`V154`,
+    cols = `V1`:`V193`,
     names_to = "PID",
     values_to = "Subs"
   )
 
 long_two <- temp_two_df %>% 
   pivot_longer(
-    cols = `V1`:`V154`, 
+    cols = `V1`:`V193`, 
     names_to = "PID",
     values_to = "EOS"
   )
@@ -68,13 +68,13 @@ final_set_low <- long_cat %>%
   summarize(prob = (sum(Subs == "1") / sum(Subs == "1" | Subs == "0")))
 
 a <- c(rep(0, 6), rep(1, 11))
-ideal_low <- cbind(a, labels)
-colnames(ideal) <- c("Low", "new_bin")
-ideal$new_bin <- as.factor(ideal$new_bin)
-new_data <- merge(final_set_low, ideal, by = "new_bin")
-df_plt <- reshape2::melt(new_data, id.var='new_bin')
+ideal_low <- as.data.frame(cbind(a, labels))
+colnames(ideal_low) <- c("Low", "new_bin")
+new_data <- merge(final_set_low, ideal_low, by = "new_bin")
+df_plt <- reshape2::melt(new_data, id.var='new_bin', variable.name = "Type", value.name = "Probability")
+df_plt$Probability <- as.numeric(as.character(df_plt$Probability))
 
-plot_one <- ggplot(data = df_plt, mapping = aes(x=new_bin, y = value, color = variable, shape = variable)) +
+plot_one <- ggplot(data = df_plt, mapping = aes(x=new_bin, y = Probability, color = Type, shape = Type)) +
   geom_point(size = 2) +
   scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
   scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
@@ -116,14 +116,14 @@ temp_two_df <- as.data.frame(temp_two)
 
 long_one <- temp_one_df %>%
   pivot_longer(
-    cols = `V1`:`V154`,
+    cols = `V1`:`V193`,
     names_to = "PID",
     values_to = "Subs"
   )
 
 long_two <- temp_two_df %>% 
   pivot_longer(
-    cols = `V1`:`V154`, 
+    cols = `V1`:`V193`, 
     names_to = "PID",
     values_to = "EOS"
   )
@@ -145,12 +145,12 @@ final_set_high <- long_cat %>%
 
 b <- c(rep(0, 6), rep(1, 11))
 ideal_high <- cbind(b, labels)
-colnames(ideal) <- c("High", "new_bin")
-ideal_high$new_bin <- as.factor(ideal_high$new_bin)
-new_data_high <- merge(final_set_high, ideal, by = "new_bin")
-df_plt2 <- reshape2::melt(new_data_high, id.var='new_bin')
+colnames(ideal_high) <- c("High", "new_bin")
+new_data_high <- merge(final_set_high, ideal_high, by = "new_bin")
+df_plt2 <- reshape2::melt(new_data_high, id.var='new_bin', variable.name = "Type", value.name = "Probability")
+df_plt2$Probability <- as.numeric(as.character(df_plt2$Probability))
 
-plot_two <- ggplot(data = df_plt2, mapping = aes(x=new_bin, y = value, color = variable, shape = variable)) +
+plot_two <- ggplot(data = df_plt2, mapping = aes(x=new_bin, y = Probability, color = Type, shape = Type)) +
   geom_point(size = 2) +
   scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
   scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
