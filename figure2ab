@@ -5,12 +5,12 @@ library(dplyr)
 ### Data is structured where each column is a patient, and each row is their ith reading.
 # this means I need to do some data wrangling, but if you format your data the same as me you 
 # should be good to just copy-paste my code.
-eos <- read.csv(file = "eos.csv", header = TRUE)
+eos <- read.csv(file = "eos_bs.csv", header = TRUE)
 
 except_first <- eos[-c(1), ] 
 
 df_one <- except_first %>%
-  gather(PID, value, x_1:x_154)%>%
+  gather(PID, value, x_1:x_193)%>%
   group_by(PID) %>%
   na.omit %>% 
   summarise(Highest_Value = max(value))
@@ -21,7 +21,7 @@ first <- eos[-c(2:nrow(eos)), ]
 ### Convert from wide to long ###
 long <- first %>%
   pivot_longer(
-    cols = `x_1`:`x_154`,
+    cols = `x_1`:`x_193`,
     names_to = "PID",
     values_to = "eos"
   )
@@ -38,10 +38,10 @@ labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249",
                 "250-299", "300-349", "350-399", "400+")
 
 cat_low <- total %>% mutate(new_bin = cut(eos, breaks=c(-1, 50, 100, 
-                                                          150, 200,
-                                                          250, 300,
-                                                          350, 400, Inf),
-                                             labels = labels_two))
+                                                        150, 200,
+                                                        250, 300,
+                                                        350, 400, Inf),
+                                          labels = labels_two))
 
 final_set_low <- cat_low %>% 
   group_by(new_bin) %>% 
@@ -50,25 +50,50 @@ final_set_high <- cat_low %>%
   group_by(new_bin) %>% 
   summarize(mean(high))
 
-colnames(final_set_low) <- c("new_bin", "Any_low")
-colnames(final_set_high) <- c("new_bin", "Any_high")
+colnames(final_set_low) <- c("Labels", "Any_low")
+colnames(final_set_high) <- c("Labels", "Any_high")
 
-p_one <- ggplot(data = final_set_low, mapping = aes(x=new_bin, y=Any_low)) +
-  geom_point() +
-  theme_classic() +
+c <- c(rep(0, 3), rep(1, 6))
+ideal_data <- as.data.frame(cbind(c, labels_two))
+colnames(ideal_data) <- c("level", "Labels")
+d <- c(rep(0, 6), rep(1, 3))
+idealdata_high <- as.data.frame(cbind(d, labels_two))
+colnames(idealdata_high) <- c("level", "Labels")
+
+new_data <- merge(final_set_low, ideal_data, by = "Labels")
+new_data_high <- merge(final_set_high, idealdata_high, by = "Labels")
+
+df_plt <- reshape2::melt(new_data, id.var='Labels', variable.name = "Type", value.name = "Probability")
+df_plt$Probability <- as.numeric(as.character(df_plt$Probability))
+
+df_plt2 <- reshape2::melt(new_data_high, id.var='Labels', variable.name = "Type", value.name = "Probability")
+df_plt2$Probability <- as.numeric(as.character(df_plt2$Probability))
+
+
+p_one <- ggplot(data = df_plt, mapping = aes(x=Labels, y = Probability, color = Type, shape = Type)) +
+  geom_point(size = 2) +
+  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
+  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
+  scale_fill_manual(values = c("red", "black")) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.title=element_blank()) +
   ylab("Probability that at least one subsequent reading is ≥150") +
   xlab("Initial PBEC Count") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
   labs(tag = "2a)") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
   scale_y_continuous(limits = c(0,1))
 
-p_two <- ggplot(data = final_set_high, mapping = aes(x=new_bin, y=Any_high)) +
-  geom_point() +
-  theme_classic() +
+p_two <- ggplot(data = df_plt2, mapping = aes(x=Labels, y=Probability, color = Type, shape = Type)) +
+  geom_point(size = 2) +
+  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
+  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
+  scale_fill_manual(values = c("red", "black")) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.title=element_blank()) +
   ylab("Probability that at least one subsequent reading is ≥300") +
   xlab("Initial PBEC Count") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
   labs(tag = "2b)") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
   scale_y_continuous(limits = c(0,1))
 
 grid.arrange(p_one, p_two, nrow = 1)
