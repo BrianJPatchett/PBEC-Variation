@@ -1,6 +1,6 @@
 # Patchett et al., 2025
 
-This paper deals with variation of the peripheral blood eosinophil count. In the paper, we develop new intra-individual metrics called the Probability of Threshold Stability (PTS) and Probability of Change Over Threshold (PCOT). These were inspired by the well-established Probability of Acute Change, which is used regularly in the psychometric literature. In case anyone is interested in replicating our findings or using PCOT or PTS in their own research, I have a brief tutorial on how we did the analysis in the paper. This is geared towards novices to make it accessible for everyone.
+This paper deals with variation of the peripheral blood eosinophil count. In the paper, we develop new intra-individual metrics called the Probability of Threshold Stability (PTS) and Probability of Change Over Threshold (PCOT). These were inspired by the well-established Probability of Acute Change, which is used regularly in the psychometric literature. In case anyone is interested in replicating our findings or using PCOT or PTS in their own research, I have a brief tutorial on how we did the analysis in the paper. This is geared towards novices to make it accessible for everyone. This does not include plotting the "ideal" distribution along side the observed data, but you can find that code in the figure2ab and figure 3ab sections.
 
 ## Install and load the required packages
 
@@ -19,22 +19,22 @@ eos <- read.csv(file = "eos.csv", header = TRUE)
 
 except_first <- eos[-c(1), ] 
 ```
-Note that in gather(PID, value, x_1:x_154), you'll have to update the x_154 to be the max number of patients you have.
+Note that in gather(PID, value, x_1:x_193), you'll have to update the x_193 to be the max number of patients you have.
 ```{r}
 df_one <- except_first %>%
-  gather(PID, value, x_1:x_154)%>%
+  gather(PID, value, x_1:x_193)%>%
   group_by(PID) %>%
   na.omit %>% 
   summarise(Highest_Value = max(value))
 
 first <- eos[-c(2:nrow(eos)), ] 
 ```
-Same goes here, adjust x_154 to your highest patient number.
+Same goes here, adjust x_193 to your highest patient number.
 ```{r}
 ### Convert from wide to long ###
 long <- first %>%
   pivot_longer(
-    cols = `x_1`:`x_154`,
+    cols = `x_1`:`x_193`,
     names_to = "PID",
     values_to = "eos"
   )
