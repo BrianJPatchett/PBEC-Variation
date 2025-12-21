@@ -1,8 +1,15 @@
-# Patchett et al., 2025
+# Patchett et al., 2026
 
-This paper deals with variation of the peripheral blood eosinophil count. In the paper, we develop new intra-individual metrics called the Probability of Threshold Stability (PTS) and Probability of Change Over Threshold (PCOT). These were inspired by the well-established Probability of Acute Change, which is used regularly in the psychometric literature. In case anyone is interested in replicating our findings or using PCOT or PTS in their own research, I have a brief tutorial on how we did the analysis in the paper. This is geared towards novices to make it accessible for everyone. This does not include plotting the "ideal" distribution along side the observed data, but you can find that code in the figure2ab and figure 3ab sections.
+Peripheral blood eosinophil counts (PBECs) are widely used to phenotype asthma and guide biologic therapy. However, PBEC values exhibit substantial within-person variability, leading to frequent misclassification when clinical decisions rely on single or sparsely repeated measurements. Of course, there are many parallel examples in medical world and beyond. This repository provides reproducible R code for analyzing longitudinal data using complementary approaches that explicitly account for variability: RPP, PCOT, and Latent burden modeling. RPP (Repeated-Positive Probability) is the probability that a patient will ever exceed a clinically relevant threshold given they had initially presented above that threshold. PCOT (Probability of Crossing Over Threshold) is the probability that the next measurement exceeds a threshold, conditional on the current value. Finally, latent burden modeling utilizes mixed-effects models to estimate patient-specific eosinophil “set points” and quantify how reliably thresholds are met over time
+These methods are designed to be interpretable to clinicians while remaining statistically principled
 
-## Install and load the required packages
+## Data format requirements
+
+All analyses assume a wide-format matrix of repeated PBEC measurements:
+  Rows: sequential measurements (e.g., clinic visits, lab draws)
+  Columns: individual patients
+  Cells: PBEC values (cells/µL)
+Missing values are allowed only as trailing NAs (padding); internal gaps are not permitted.
 
 ```{r}
 p <- c("tidyverse", "egg", "ggh4x")
