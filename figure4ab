@@ -1,73 +1,252 @@
-library(drc)
+library(dplyr)
+library(tidyr)
+library(lme4)
 library(ggplot2)
-library(ggh4x)
+library(gridExtra)
+library(scales)
 
-## Is this the best code? no. Does it work? yes ##
-# Again, same format of data as above 
-eos <- read.csv("file = eos.csv", header = TRUE)
+### Parameters ###
 
-long <- eos %>%
-  pivot_longer(
-    cols = `x_1`:`x_154`,
-    names_to = "PID",
-    values_to = "eos"
-  ) %>%
-  na.omit()
+file_in   <- "eos_bs.csv"
+tau_vec   <- c(150, 300)
+grid_n    <- 250
 
-average <- long %>%
-  group_by(PID) %>%
-  summarise(mean(eos))
+# Bootstrap for mean-curve CI (optional)
+do_bootstrap <- TRUE
+B            <- 500
+set.seed(123)
 
-low <- long %>%
-  group_by(PID) %>%
-  summarize(prob = (sum(eos >= 150)) / (sum(eos >= 150 | eos < 150)))
+### Load & long-format data ###
 
-high <- long %>%
-  group_by(PID) %>%
-  summarize(prob = (sum(eos >= 300)) / (sum(eos >= 300 | eos < 300)))
+eos_wide <- read.csv(file_in, header = TRUE, check.names = FALSE)
 
-merge_one <- unique(left_join(average,low,by="PID"))
-merge_final <- unique(left_join(merge_one, high, by="PID"))
-colnames(merge_final) <- c("PID", "average", "low", "high")
+eos_long <- eos_wide %>%
+  mutate(visit_index = row_number()) %>%
+  pivot_longer(cols = -visit_index, names_to = "PID", values_to = "eos") %>%
+  filter(!is.na(eos)) %>%
+  mutate(
+    PID  = factor(PID),
+    eos  = as.numeric(eos),
+    leos = log1p(eos)
+  )
 
-mod1 <- drm(low ~ average, data = merge_final, fct = LL.2())
-mod2 <- drm(high ~ average, data = merge_final, fct = LL.2())
+stopifnot(nrow(eos_long) > 0)
 
-ED(mod1, c(5, 95), interval = "delta")
-ED(mod2, c(5, 95), interval = "delta")
+### Primary model: random intercept (latent burden) ### 
 
-low_curve <-
-  ggplot(data = merge_final,
-         aes(
-           x = average,
-           y = low)) +
-  geom_point(shape=16) +
-  geom_smooth(method = drm, 
-              method.args = list(fct = LL.2()), 
-              se = FALSE, 
-              color = "black") +
-  geom_vline(xintercept = 150, linetype="solid", color = "red", size=1) +
-  xlab("Average Eosinophil Count") +
-  ylab("Proportion of Measurements ≥150 cells/ul") +
-  labs(tag = "4a)") +
-  scale_x_log10(minor_breaks = seq(0, 1000, by = 100), guide = "axis_minor") +
-  theme_classic()
+fit_loc <- lmer(leos ~ 1 + (1 | PID), data = eos_long, REML = TRUE)
 
-high_curve <-
-  ggplot(data = merge_final,
-         aes(
-           x = average,
-           y = high)) +
-  geom_point(shape=16) +
-  geom_smooth(method = drm, 
-              method.args = list(fct = LL.2()), 
-              se = FALSE, 
-              color = "black") +
-  geom_vline(xintercept = 300, linetype="solid", color = "red", size=1) +
-  xlab("Average Eosinophil Count") +
-  ylab("Proportion of Measurements ≥300 cells/ul") +
-  labs(tag = "4b)") +
-  scale_x_log10(minor_breaks = seq(0, 1000, by = 100), guide = "axis_minor") +
-  theme_classic()
+beta0   <- fixef(fit_loc)[["(Intercept)"]]
+b_i     <- ranef(fit_loc)$PID[["(Intercept)"]]
+mu_i    <- beta0 + b_i                       # latent set point on log scale (patient-specific)
+sigma_w <- sigma(fit_loc)                    # pooled within-person SD on log scale
 
-grid.arrange(low_curve, high_curve, nrow = 1)
+# Grid for curves (log-scale latent burden, then back-transform for x-axis)
+mu_grid <- seq(min(mu_i), max(mu_i), length.out = grid_n)
+
+curve_df <- tibble(
+  mu = mu_grid,
+  burden_index = expm1(mu_grid)
+)
+
+# Model-implied exceedance probability under pooled sigma
+p_exceed <- function(mu, tau, sigma_w) {
+  z <- (log1p(tau) - mu) / sigma_w
+  1 - pnorm(z)
+}
+
+curve_df <- curve_df %>%
+  mutate(
+    p_ge_150 = p_exceed(mu, 150, sigma_w),
+    p_ge_300 = p_exceed(mu, 300, sigma_w)
+  )
+
+# Optional: anchor points for visual guidance (deciles of the curve grid)
+anchor_idx <- unique(round(seq(1, nrow(curve_df), length.out = 10)))
+anchor_df  <- curve_df[anchor_idx, , drop = FALSE]
+
+
+### Diagnostics ###
+
+# resid_std   <- resid(fit_loc) / sigma(fit_loc)
+# fitted_vals <- fitted(fit_loc)
+# hist(resid_std); qqnorm(resid_std); qqline(resid_std)
+# plot(fitted_vals, resid_std); abline(h=0, col="red")
+
+### Random slope sensitivity (visit order) ###
+
+fit_rs_REML <- lmer(leos ~ visit_index + (visit_index | PID), data = eos_long, REML = TRUE)
+
+fit_loc_ML <- update(fit_loc, REML = FALSE)
+fit_rs_ML  <- update(fit_rs_REML, REML = FALSE)
+
+print(AIC(fit_loc_ML, fit_rs_ML))
+print(summary(fit_rs_REML))
+
+### Two-stage heteroscedasticity (sigma_i via shrinkage on squared residuals) ###
+
+eos_long2 <- eos_long %>%
+  mutate(
+    resid  = resid(fit_loc),
+    log_r2 = log(pmax(resid^2, 1e-12))
+  )
+
+fit_scale <- lmer(log_r2 ~ 1 + (1 | PID), data = eos_long2, REML = TRUE)
+
+kappa  <- digamma(0.5) + log(2)
+alpha0 <- fixef(fit_scale)[["(Intercept)"]]
+u_i_sc <- ranef(fit_scale)$PID[["(Intercept)"]]
+
+# Patient-specific within-person SD estimates on log scale (shrunk)
+sigma_i <- sqrt(exp(alpha0 + u_i_sc - kappa))
+print(summary(sigma_i))
+
+# Quantiles for variability envelope
+s25 <- as.numeric(quantile(sigma_i, 0.25, na.rm = TRUE))
+s50 <- as.numeric(quantile(sigma_i, 0.50, na.rm = TRUE))
+s75 <- as.numeric(quantile(sigma_i, 0.75, na.rm = TRUE))
+
+# Median-sigma curves + IQR envelope for >=150
+curve_df <- curve_df %>%
+  mutate(
+    p150_s25 = p_exceed(mu, 150, s25),
+    p150_s50 = p_exceed(mu, 150, s50),
+    p150_s75 = p_exceed(mu, 150, s75),
+    env_lo_150 = pmin(p150_s25, p150_s75),
+    env_hi_150 = pmax(p150_s25, p150_s75)
+  )
+
+# Median-sigma curves + IQR envelope for >=300
+curve_df <- curve_df %>%
+  mutate(
+    p300_s25 = p_exceed(mu, 300, s25),
+    p300_s50 = p_exceed(mu, 300, s50),
+    p300_s75 = p_exceed(mu, 300, s75),
+    env_lo_300 = pmin(p300_s25, p300_s75),
+    env_hi_300 = pmax(p300_s25, p300_s75)
+  )
+
+### Parametric bootstrap CI for mean curve ###
+### This gives pointwise 95% CIs for the pooled-sigma curve ###
+
+if (isTRUE(do_bootstrap)) {
+
+  p_curve <- function(fit, tau, mu_grid) {
+    sig <- sigma(fit)
+    z <- (log1p(tau) - mu_grid) / sig
+    1 - pnorm(z)
+  }
+
+  boot_150 <- matrix(NA_real_, nrow = B, ncol = length(mu_grid))
+  boot_300 <- matrix(NA_real_, nrow = B, ncol = length(mu_grid))
+
+  for (b in seq_len(B)) {
+    sim_leos <- simulate(fit_loc, nsim = 1)[[1]]
+    eos_long$leos_sim <- sim_leos
+
+    fit_b <- tryCatch(
+      lmer(leos_sim ~ 1 + (1 | PID), data = eos_long, REML = TRUE),
+      error = function(e) NULL
+    )
+
+    if (!is.null(fit_b)) {
+      boot_150[b, ] <- p_curve(fit_b, 150, mu_grid)
+      boot_300[b, ] <- p_curve(fit_b, 300, mu_grid)
+    }
+  }
+
+  keep <- complete.cases(boot_150[, 1], boot_300[, 1])
+  boot_150 <- boot_150[keep, , drop = FALSE]
+  boot_300 <- boot_300[keep, , drop = FALSE]
+
+  ci_150 <- apply(boot_150, 2, quantile, probs = c(0.025, 0.975), na.rm = TRUE)
+  ci_300 <- apply(boot_300, 2, quantile, probs = c(0.025, 0.975), na.rm = TRUE)
+
+  curve_df <- curve_df %>%
+    mutate(
+      lo_150 = ci_150[1, ], hi_150 = ci_150[2, ],
+      lo_300 = ci_300[1, ], hi_300 = ci_300[2, ]
+    )
+}
+
+### Plot helpers (percent markers + benchmark lines) ###
+
+common_layers <- list(
+  geom_hline(yintercept = c(0.50, 0.80, 0.95),
+             linetype = "dashed", color = "grey50", linewidth = 0.4),
+  geom_vline(xintercept = c(150, 300),
+             linetype = "dotted", color = "grey40", linewidth = 0.5),
+  annotate("text", x = Inf, y = 0.95, label = "95%",
+           hjust = 1.05, vjust = -0.4, size = 3, color = "grey30"),
+  annotate("text", x = Inf, y = 0.80, label = "80%",
+           hjust = 1.05, vjust = -0.4, size = 3, color = "grey30"),
+  annotate("text", x = Inf, y = 0.50, label = "50%",
+           hjust = 1.05, vjust = -0.4, size = 3, color = "grey30"),
+  annotate("text", x = 150, y = 0.02, label = "150",
+           angle = 90, vjust = -0.2, hjust = 0, size = 3, color = "grey30"),
+  annotate("text", x = 300, y = 0.02, label = "300",
+           angle = 90, vjust = -0.2, hjust = 0, size = 3, color = "grey30"),
+  scale_y_continuous(
+    limits = c(0, 1),
+    labels = percent_format(accuracy = 1),
+    breaks = c(0, 0.25, 0.50, 0.75, 1.0)
+  ),
+  theme_minimal(base_size = 12),
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.tag = element_text(face = "bold"),
+    plot.tag.position = c(0.01, 0.99)
+  )
+)
+
+### Figure 4a (>=150) ###
+
+p4a <- ggplot(curve_df, aes(x = burden_index)) +
+
+  # Optional mean-curve bootstrap CI (very light, underneath)
+  {if (isTRUE(do_bootstrap)) geom_ribbon(aes(ymin = lo_150, ymax = hi_150),
+                                        fill = "grey40", alpha = 0.10) } +
+
+  # Variability envelope (sigma_i IQR)
+  geom_ribbon(aes(ymin = env_lo_150, ymax = env_hi_150),
+              fill = "grey70", alpha = 0.25) +
+
+  # Median-sigma curve
+  geom_line(aes(y = p150_s50), linewidth = 1.1, color = "black") +
+
+  # Optional anchor points
+  # geom_point(data = anchor_df, aes(x = burden_index, y = p_exceed(mu, 150, s50)),
+  #            size = 2.0, color = "black", inherit.aes = FALSE) +
+
+  do.call(`+`, common_layers) +
+  labs(
+    title = "Model-implied probability of meeting PBEC ≥150",
+    x = "Long-term eosinophil burden (cells/µL, model-estimated)",
+    y = "Chance next PBEC is ≥150 (%)",
+    tag = "4a)"
+  )
+
+### Figure 4b (>=300) ###
+
+p4b <- ggplot(curve_df, aes(x = burden_index)) +
+
+  # Optional mean-curve bootstrap CI (very light, underneath)
+  {if (isTRUE(do_bootstrap)) geom_ribbon(aes(ymin = lo_300, ymax = hi_300),
+                                        fill = "grey40", alpha = 0.10) } +
+
+  # Variability envelope (sigma_i IQR)
+  geom_ribbon(aes(ymin = env_lo_300, ymax = env_hi_300),
+              fill = "grey70", alpha = 0.25) +
+
+  # Median-sigma curve
+  geom_line(aes(y = p300_s50), linewidth = 1.1, color = "black") +
+
+  do.call(`+`, common_layers) +
+  labs(
+    title = "Model-implied probability of meeting PBEC ≥300",
+    x = "Long-term eosinophil burden (cells/µL, model-estimated)",
+    y = "Chance next PBEC is ≥300 (%)",
+    tag = "4b)"
+  )
+
+grid.arrange(p4a, p4b, nrow = 1)
