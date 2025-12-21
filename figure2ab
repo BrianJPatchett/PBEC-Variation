@@ -1,99 +1,169 @@
+library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(dplyr)
+library(gridExtra)
 
-### Data is structured where each column is a patient, and each row is their ith reading.
-# this means I need to do some data wrangling, but if you format your data the same as me you 
-# should be good to just copy-paste my code.
-eos <- read.csv(file = "eos_bs.csv", header = TRUE)
+### Utility: Wilson score CI ##
 
-except_first <- eos[-c(1), ] 
+wilson_ci <- function(x, n, conf.level = 0.95) {
+  stopifnot(length(x) == 1, length(n) == 1)
+  if (is.na(x) || is.na(n) || n <= 0) {
+    return(c(estimate = NA_real_, lower = NA_real_, upper = NA_real_))
+  }
+  if (x < 0 || x > n) stop("wilson_ci: require 0 <= x <= n")
 
-df_one <- except_first %>%
-  gather(PID, value, x_1:x_193)%>%
-  group_by(PID) %>%
-  na.omit %>% 
-  summarise(Highest_Value = max(value))
+  alpha <- 1 - conf.level
+  z <- qnorm(1 - alpha / 2)
 
-### now remove all but the first eosinophil readings ###
-first <- eos[-c(2:nrow(eos)), ] 
+  p_hat <- x / n
+  denom <- 1 + (z^2 / n)
+  center <- (p_hat + (z^2 / (2 * n))) / denom
+  half_width <- (z / denom) * sqrt((p_hat * (1 - p_hat) / n) + (z^2 / (4 * n^2)))
 
-### Convert from wide to long ###
-long <- first %>%
-  pivot_longer(
-    cols = `x_1`:`x_193`,
-    names_to = "PID",
-    values_to = "eos"
+  c(
+    estimate = p_hat,
+    lower = max(0, center - half_width),
+    upper = min(1, center + half_width)
   )
+}
 
-### merge by PID ###
-total <- merge(long, df_one,by="PID")
 
-total$low <- 0
-total$low <- ifelse(total$Highest_Value > 149, 1, total$low)
-total$high <- 0
-total$high <- ifelse(total$Highest_Value > 299, 1, total$high)
+### Inputs ###
 
-labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249", 
+eos <- read.csv("eos_bs.csv", header = TRUE, check.names = FALSE)
+
+# Identify patient columns robustly (instead of hard-coding x_1:x_193)
+pid_cols <- names(eos)[grepl("^x_", names(eos))]
+if (length(pid_cols) == 0) stop("No patient columns found (expected columns starting with 'x_').")
+
+labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249",
                 "250-299", "300-349", "350-399", "400+")
 
-cat_low <- total %>% mutate(new_bin = cut(eos, breaks=c(-1, 50, 100, 
-                                                        150, 200,
-                                                        250, 300,
-                                                        350, 400, Inf),
-                                          labels = labels_two))
-
-final_set_low <- cat_low %>% 
-  group_by(new_bin) %>% 
-  summarize(mean(low))
-final_set_high <- cat_low %>% 
-  group_by(new_bin) %>% 
-  summarize(mean(high))
-
-colnames(final_set_low) <- c("Labels", "Any_low")
-colnames(final_set_high) <- c("Labels", "Any_high")
-
-c <- c(rep(0, 3), rep(1, 6))
-ideal_data <- as.data.frame(cbind(c, labels_two))
-colnames(ideal_data) <- c("level", "Labels")
-d <- c(rep(0, 6), rep(1, 3))
-idealdata_high <- as.data.frame(cbind(d, labels_two))
-colnames(idealdata_high) <- c("level", "Labels")
-
-new_data <- merge(final_set_low, ideal_data, by = "Labels")
-new_data_high <- merge(final_set_high, idealdata_high, by = "Labels")
-
-df_plt <- reshape2::melt(new_data, id.var='Labels', variable.name = "Type", value.name = "Probability")
-df_plt$Probability <- as.numeric(as.character(df_plt$Probability))
-
-df_plt2 <- reshape2::melt(new_data_high, id.var='Labels', variable.name = "Type", value.name = "Probability")
-df_plt2$Probability <- as.numeric(as.character(df_plt2$Probability))
+bin_breaks <- c(-1, 50, 100, 150, 200, 250, 300, 350, 400, Inf)
 
 
-p_one <- ggplot(data = df_plt, mapping = aes(x=Labels, y = Probability, color = Type, shape = Type)) +
-  geom_point(size = 2) +
-  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
-  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
-  scale_fill_manual(values = c("red", "black")) +
-  theme_minimal() +
-  theme(legend.position = "bottom", legend.title=element_blank()) +
-  ylab("Probability that at least one subsequent reading is ≥150") +
-  xlab("Initial PBEC Count") +
-  labs(tag = "2a)") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  scale_y_continuous(limits = c(0,1))
+### Construct patient-level dataset: ###
+### first reading + max subsequent reading ###
 
-p_two <- ggplot(data = df_plt2, mapping = aes(x=Labels, y=Probability, color = Type, shape = Type)) +
-  geom_point(size = 2) +
-  scale_color_manual(labels = c("Observed", "Ideal"), values = c("red", "black")) +
-  scale_shape_manual(labels = c("Observed", "Ideal"), values = c(15, 17)) +
-  scale_fill_manual(values = c("red", "black")) +
-  theme_minimal() +
-  theme(legend.position = "bottom", legend.title=element_blank()) +
-  ylab("Probability that at least one subsequent reading is ≥300") +
-  xlab("Initial PBEC Count") +
-  labs(tag = "2b)") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  scale_y_continuous(limits = c(0,1))
+
+# First reading for each patient
+first_df <- eos %>%
+  slice(1) %>%
+  pivot_longer(cols = all_of(pid_cols), names_to = "PID", values_to = "eos_first") %>%
+  mutate(PID = factor(PID))
+
+# Maximum of subsequent readings (rows 2+)
+max_subseq_df <- eos %>%
+  slice(-1) %>%
+  pivot_longer(cols = all_of(pid_cols), names_to = "PID", values_to = "eos_sub") %>%
+  filter(!is.na(eos_sub)) %>%
+  group_by(PID) %>%
+  summarise(max_subseq = max(eos_sub), .groups = "drop") %>%
+  mutate(PID = factor(PID))
+
+# Combine
+total <- first_df %>%
+  left_join(max_subseq_df, by = "PID") %>%
+  mutate(
+    rpp150 = as.integer(max_subseq >= 150),  # any subsequent reading >=150
+    rpp300 = as.integer(max_subseq >= 300),  # any subsequent reading >=300
+    bin = cut(eos_first, breaks = bin_breaks, labels = labels_two)
+  )
+
+### Helper: compute by-bin Wilson CIs ###
+
+summarise_rpp <- function(dat, outcome_col) {
+  dat %>%
+    filter(!is.na(bin), !is.na(.data[[outcome_col]])) %>%
+    group_by(bin) %>%
+    summarise(
+      n = n(),
+      x = sum(.data[[outcome_col]] == 1),
+      .groups = "drop"
+    ) %>%
+    rowwise() %>%
+    mutate(ci = list(wilson_ci(x, n))) %>%
+    ungroup() %>%
+    mutate(
+      est = vapply(ci, `[[`, numeric(1), "estimate"),
+      lo  = vapply(ci, `[[`, numeric(1), "lower"),
+      hi  = vapply(ci, `[[`, numeric(1), "upper")
+    ) %>%
+    select(Labels = bin, n, x, est, lo, hi)
+}
+
+rpp150_bybin <- summarise_rpp(total, "rpp150")
+rpp300_bybin <- summarise_rpp(total, "rpp300")
+
+
+### Ideal step-function references ###
+
+ideal_150 <- tibble(
+  Labels = factor(labels_two, levels = labels_two),
+  ideal = c(rep(0, 3), rep(1, 6))
+)
+
+ideal_300 <- tibble(
+  Labels = factor(labels_two, levels = labels_two),
+  ideal = c(rep(0, 6), rep(1, 3))
+)
+
+# Ensure Labels are ordered
+rpp150_bybin <- rpp150_bybin %>% mutate(Labels = factor(Labels, levels = labels_two))
+rpp300_bybin <- rpp300_bybin %>% mutate(Labels = factor(Labels, levels = labels_two))
+
+
+### Plot helper ###
+
+make_plot <- function(obs_df, ideal_df, ylab_text, tag_text) {
+
+  # long data for points
+  points_df <- bind_rows(
+    obs_df %>% transmute(Labels, Type = "Observed", Probability = est),
+    ideal_df %>% transmute(Labels, Type = "Ideal",    Probability = ideal)
+  )
+
+  # CI only for observed
+  ci_df <- obs_df %>%
+    transmute(Labels, ymin = lo, ymax = hi)
+
+  ggplot(points_df, aes(x = Labels, y = Probability, color = Type, shape = Type)) +
+    geom_point(size = 2) +
+    geom_errorbar(
+      data = ci_df,
+      aes(x = Labels, ymin = ymin, ymax = ymax),
+      inherit.aes = FALSE,
+      width = 0.15,
+      color = "red"
+    ) +
+    scale_color_manual(values = c("Observed" = "red", "Ideal" = "black")) +
+    scale_shape_manual(values = c("Observed" = 15, "Ideal" = 17)) +
+    scale_x_discrete(guide = guide_axis(angle = 45)) +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(
+      x = "Initial PBEC Count",
+      y = ylab_text,
+      tag = tag_text
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_blank()
+    )
+}
+
+p_one <- make_plot(
+  obs_df = rpp150_bybin,
+  ideal_df = ideal_150,
+  ylab_text = "RPP: P(at least one subsequent reading is ≥150)",
+  tag_text = "2a)"
+)
+
+p_two <- make_plot(
+  obs_df = rpp300_bybin,
+  ideal_df = ideal_300,
+  ylab_text = "RPP: P(at least one subsequent reading is ≥300)",
+  tag_text = "2b)"
+)
 
 grid.arrange(p_one, p_two, nrow = 1)
