@@ -6,101 +6,52 @@ These methods are designed to be interpretable to clinicians while remaining sta
 ## Data format requirements
 
 All analyses assume a wide-format matrix of repeated PBEC measurements:
-  Rows: sequential measurements (e.g., clinic visits, lab draws)
-  Columns: individual patients
-  Cells: PBEC values (cells/µL)
+
+ 1. Rows: sequential measurements (e.g., clinic visits, lab draws)
+ 
+ 2. Columns: individual patients
+  
+ 3. Cells: PBEC values (cells/µL)
+
 Missing values are allowed only as trailing NAs (padding); internal gaps are not permitted.
 
 ```{r}
-p <- c("tidyverse", "egg", "ggh4x")
+library(lme4)
+library(tidyverse)
 
-if (!require(p)) install.packages(p)
-lapply(p, library, c = T)
+# Load example data
+eos <- read.csv("eos_bs.csv")
+
+# Run the primary latent burden model
+source("figure4ab.R")
+
+# Generate Figure 4a (≥150 cells/µL)
+print(p4a)
 ```
-Now that we've loaded the packages, we need to make sure our data is in the wide format. This means each column is a patient, and each row is their nth eosinophil count (or whatever measurement you're using). Each column should have the header of x_1, x_2, x_3, ... x_n. If you're comfortable with R code, you can leave the data in long format and just remove the steps that deal with convert from wide to long.
+This produces a model-implied probability curve showing how reliably patients meet the ≥150 PBEC threshold as a function of long-term eosinophil burden.
 
-## Tutorial for Probability of Threshold Stability
-Loading the data
-```{r}
-eos <- read.csv(file = "eos.csv", header = TRUE)
+## Method 1: Repeated-Positive Probability (RPP)
 
-except_first <- eos[-c(1), ] 
-```
-Note that in gather(PID, value, x_1:x_193), you'll have to update the x_193 to be the max number of patients you have.
-```{r}
-df_one <- except_first %>%
-  gather(PID, value, x_1:x_193)%>%
-  group_by(PID) %>%
-  na.omit %>% 
-  summarise(Highest_Value = max(value))
+The Repeated-Positive Probability (RPP) framework quantifies how often patients with a given initial peripheral blood eosinophil count (PBEC) eventually exceed a clinically relevant threshold at least once during subsequent follow-up. Operationally, patients are first stratified according to their initial PBEC into clinically interpretable bins. Within each bin, RPP is defined as the proportion of patients who exhibit at least one subsequent PBEC measurement that meets or exceeds a specified threshold (e.g., ≥150 or ≥300 cells/µL).
 
-first <- eos[-c(2:nrow(eos)), ] 
-```
-Same goes here, adjust x_193 to your highest patient number.
-```{r}
-### Convert from wide to long ###
-long <- first %>%
-  pivot_longer(
-    cols = `x_1`:`x_193`,
-    names_to = "PID",
-    values_to = "eos"
-  )
+RPP is thus a cumulative, patient-level measure that captures long-term instability rather than short-term transitions. It is particularly useful for understanding whether an apparently “low” initial PBEC reliably excludes future eosinophilic activity, or whether patients with borderline values are likely to cross diagnostic or therapeutic thresholds at some point during longitudinal observation. Importantly, RPP does not model the timing or frequency of threshold crossings; it answers a simpler but clinically relevant question: given where a patient starts, how often do they ever cross the threshold at all?
 
-### merge by PID ###
-total <- merge(long, df_one,by="PID")
-```
-Here, you'll need to adjust "149" and "299" to be the thresholds of interest for your project. Same goes for the labels_two and mutate arguments. Adjust those to reflect the intervals of interest.
-```{r}
-total$low <- 0
-total$low <- ifelse(total$Highest_Value > 149, 1, total$low)
-total$high <- 0
-total$high <- ifelse(total$Highest_Value > 299, 1, total$high)
+## Method 2: Probability of Crossing Over Threshold (PCOT)
+The Probability of Crossing Over Threshold (PCOT) approach focuses on short-term dynamics by estimating the conditional probability that the next PBEC measurement exceeds a predefined threshold, given the current PBEC value. Unlike RPP, which aggregates information across an entire follow-up period, PCOT operates at the level of consecutive measurement pairs and therefore reflects immediate transition risk.
 
-labels_two <- c("0-49", "50-99", "100-149", "150-199", "200-249", 
-                "250-299", "300-349", "350-399", "400+")
+In practice, PBEC values are discretized into bins, and all valid consecutive measurement pairs within individuals are identified. For each bin, PCOT is calculated as the proportion of transitions in which the subsequent measurement exceeds the threshold of interest. This formulation explicitly preserves within-subject correlation by restricting comparisons to adjacent observations from the same individual.
 
-cat_low <- total %>% mutate(new_bin = cut(eos, breaks=c(-1, 50, 100, 
-                                                          150, 200,
-                                                          250, 300,
-                                                          350, 400, Inf),
-                                             labels = labels_two))
+PCOT is well suited for scenarios in which clinicians are interested in near-term stability—for example, assessing whether a patient with a current PBEC just below a treatment cutoff is likely to exceed that cutoff at their next visit. While PCOT does not characterize long-term disease burden, it provides an intuitive, data-driven measure of short-horizon variability.
 
-final_set_low <- cat_low %>% 
-  group_by(new_bin) %>% 
-  summarize(mean(low))
-final_set_high <- cat_low %>% 
-  group_by(new_bin) %>% 
-  summarize(mean(high))
+## Method 3: Latent Eosinophil Burden Modeling  
+To move beyond threshold-based summaries, we model longitudinal PBEC measurements using a random-intercept mixed-effects framework that estimates a patient-specific latent eosinophil “set point.” PBEC values are log-transformed to stabilize variance, and each patient is assumed to fluctuate around an individual mean (latent burden), with residual variability capturing within-person fluctuations over time. This model separates stable between-patient differences from transient within-patient noise.
 
-colnames(final_set_low) <- c("new_bin", "Any_low")
-colnames(final_set_high) <- c("new_bin", "Any_high")
+Using the fitted model, we derive the model-implied probability that a future PBEC measurement will exceed a clinically relevant threshold as a continuous function of latent eosinophil burden. These probabilities are not empirical proportions but analytic quantities derived from the assumed conditional distribution of future measurements. To improve clinical interpretability, latent burden is back-transformed to the original PBEC scale and presented as a smooth curve rather than discrete bins.
 
-p_one <- ggplot(data = final_set_low, mapping = aes(x=new_bin, y=Any_low)) +
-  geom_point() +
-  theme_classic() +
-  ylab("Probability that at least one subsequent reading is ≥150") +
-  xlab("Initial PBEC Count") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  labs(tag = "2a)") +
-  scale_y_continuous(limits = c(0,1))
+To account for heterogeneity in eosinophil stability across patients, we further estimate patient-specific residual variances using a two-stage shrinkage approach. This allows construction of variability envelopes that illustrate how exceedance probabilities differ between patients with relatively stable versus highly variable eosinophil profiles. In addition, parametric bootstrap resampling is used to quantify uncertainty in the population-level probability curves.
 
-p_two <- ggplot(data = final_set_high, mapping = aes(x=new_bin, y=Any_high)) +
-  geom_point() +
-  theme_classic() +
-  ylab("Probability that at least one subsequent reading is ≥300") +
-  xlab("Initial PBEC Count") +
-  scale_x_discrete(guide = guide_axis(angle = 45)) +
-  labs(tag = "2b)") +
-  scale_y_continuous(limits = c(0,1))
+Together, this modeling approach provides a probabilistic interpretation of commonly used PBEC thresholds, demonstrating that even patients with high average eosinophil burden may not consistently meet stringent cutoffs at individual visits. Unlike RPP and PCOT, which summarize empirical behavior, the latent burden model offers a unified framework that links long-term burden, short-term variability, and threshold reliability
 
-grid.arrange(p_one, p_two, nrow = 1)
-```
+## Citation and Contact
 
-## Conclusion
-I hope this helps you in your project. Please remember to cite the paper if you plan on using this approach. I additionally wrote some code that uses resampling to see how the values change with random initial values.  If you have any questions, email me.
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+If you use this code in academic work, please cite the accompanying manuscript. Questions, issues, and contributions are welcome via GitHub Issues
