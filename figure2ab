@@ -32,7 +32,7 @@ wilson_ci <- function(x, n, conf.level = 0.95) {
 
 eos <- read.csv("eos_bs.csv", header = TRUE, check.names = FALSE)
 
-# Identify patient columns robustly (instead of hard-coding x_1:x_193)
+# Identify patient columns 
 pid_cols <- names(eos)[grepl("^x_", names(eos))]
 if (length(pid_cols) == 0) stop("No patient columns found (expected columns starting with 'x_').")
 
