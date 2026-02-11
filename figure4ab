@@ -6,9 +6,6 @@ library(gridExtra)
 library(scales)
 
 ### Parameters ###
-
-file_in   <- "eos_bs.csv"
-tau_vec   <- c(150, 300)
 grid_n    <- 250
 
 # Bootstrap for mean-curve CI (optional)
@@ -18,7 +15,7 @@ set.seed(123)
 
 ### Load & long-format data ###
 
-eos_wide <- read.csv(file_in, header = TRUE, check.names = FALSE)
+eos_wide <- read.csv(eos.csv, header = TRUE)
 
 eos_long <- eos_wide %>%
   mutate(visit_index = row_number()) %>%
